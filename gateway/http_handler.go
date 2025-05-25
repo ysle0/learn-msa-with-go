@@ -7,6 +7,8 @@ import (
 
 	"github.com/ysle0/omsv2/common"
 	pb "github.com/ysle0/omsv2/common/api"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type httpHandler struct {
@@ -32,8 +34,48 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("items: %+v\n", items)
 
-	h.grpcClient.CreateOrder(context.Background(), &pb.CreateOrderRequest{
+	err := validateItems(items)
+	if err != nil {
+		common.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	o, err := h.grpcClient.CreateOrder(context.Background(), &pb.CreateOrderRequest{
 		CustomerID: customerID,
 		Items:      items,
 	})
+	rStatus := status.Convert(err)
+	if rStatus != nil {
+		if rStatus.Code() == codes.InvalidArgument {
+			common.WriteError(w, http.StatusBadRequest, rStatus.Message())
+			return
+		}
+
+		common.WriteError(w, http.StatusInternalServerError, rStatus.Message())
+		return
+	}
+	if err != nil {
+		common.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	common.WriteJSON(w, http.StatusOK, o)
+}
+
+func validateItems(items []*pb.ItemsWithQuantity) error {
+	if len(items) == 0 {
+		return common.ErrNoItems
+	}
+
+	for _, i := range items {
+		if i.ID == "" {
+			return common.ErrItemIdRequired
+		}
+
+		if i.Quantity <= 0 {
+			return common.ErrItemQuantityRequired
+		}
+	}
+
+	return nil
 }
