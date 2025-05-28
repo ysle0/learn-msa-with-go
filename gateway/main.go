@@ -1,41 +1,49 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
 	common "github.com/ysle0/omsv2/common"
-	pb "github.com/ysle0/omsv2/common/api"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/ysle0/omsv2/common/discovery"
+	"github.com/ysle0/omsv2/common/discovery/consul"
+	"github.com/ysle0/omsv2/gateway/gateway"
 )
 
 var (
-	httpAddr         = common.EnvString("HTTP_ADDR", ":8000")
-	orderServiceAddr = "localhost:3000"
+	httpAddr    = common.EnvString("HTTP_ADDR", ":8000")
+	consulAddr  = common.EnvString("CONSUL_ADDR", "localhost:8500")
+	serviceName = "gateway"
 )
 
 func main() {
-	conn, err := grpc.Dial(
-		orderServiceAddr,
-		grpc.WithTransportCredentials(
-			insecure.NewCredentials(),
-		))
+	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
-		log.Fatalf("failed to dial server: %v\n", err)
-	}
-	defer conn.Close()
-
-	log.Println("Dialing orders service at ", orderServiceAddr)
-
-	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	c := pb.NewOrderServiceClient(conn)
+	ctx := context.Background()
+	instanceID := discovery.MakeInstanceID(serviceName)
+	if err := registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for {
+			if err := registry.HealthCheck(instanceID, serviceName); err != nil {
+				log.Fatal("Failed to health check")
+			}
+			time.Sleep(time.Second * 1)
+		}
+	}()
+	defer registry.Unregister(ctx, instanceID, serviceName)
+
+	gateway := gateway.NewGRPCGateway(registry)
+	httpHandler := NewHttpHandler(gateway)
+
 	mux := http.NewServeMux()
-
-	httpHandler := NewHttpHandler(c)
 	httpHandler.registerRoutes(mux)
 
 	log.Printf("HTTP server listening on %s", httpAddr)

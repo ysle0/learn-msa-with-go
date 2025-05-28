@@ -1,22 +1,22 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 
 	"github.com/ysle0/omsv2/common"
 	pb "github.com/ysle0/omsv2/common/api"
+	"github.com/ysle0/omsv2/gateway/gateway"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type httpHandler struct {
-	grpcClient pb.OrderServiceClient
+	gateway gateway.OrdersGateway
 }
 
-func NewHttpHandler(c pb.OrderServiceClient) *httpHandler {
-	return &httpHandler{grpcClient: c}
+func NewHttpHandler(gateway gateway.OrdersGateway) *httpHandler {
+	return &httpHandler{gateway}
 }
 
 func (h *httpHandler) registerRoutes(mux *http.ServeMux) {
@@ -36,11 +36,11 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := validateItems(items)
 	if err != nil {
-		common.WriteError(w, http.StatusBadRequest, err.Error())
+		common.WriteHeaderErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	o, err := h.grpcClient.CreateOrder(context.Background(), &pb.CreateOrderRequest{
+	order, err := h.gateway.CreateOrder(r.Context(), &pb.CreateOrderRequest{
 		CustomerID: customerID,
 		Items:      items,
 	})
