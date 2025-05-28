@@ -15,6 +15,6 @@ func ReadJSON(r *http.Request, data any) error {
 	return json.NewDecoder(r.Body).Decode(data)
 }
 
-func WriteError(w http.ResponseWriter, status int, message string) {
+func WriteHeaderErr(w http.ResponseWriter, status int, message string) {
 	WriteJSON(w, status, map[string]string{"error": message})
 }

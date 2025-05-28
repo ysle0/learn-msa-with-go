@@ -29,7 +29,7 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 
 	var items []*pb.ItemsWithQuantity
 	if err := common.ReadJSON(r, &items); err != nil {
-		common.WriteError(w, http.StatusBadRequest, err.Error())
+		common.WriteHeaderErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	log.Printf("items: %+v\n", items)
@@ -44,38 +44,22 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 		CustomerID: customerID,
 		Items:      items,
 	})
+
 	rStatus := status.Convert(err)
 	if rStatus != nil {
 		if rStatus.Code() == codes.InvalidArgument {
-			common.WriteError(w, http.StatusBadRequest, rStatus.Message())
+			common.WriteHeaderErr(w, http.StatusBadRequest, rStatus.Message())
 			return
 		}
 
-		common.WriteError(w, http.StatusInternalServerError, rStatus.Message())
+		common.WriteHeaderErr(w, http.StatusInternalServerError, rStatus.Message())
 		return
 	}
+
 	if err != nil {
-		common.WriteError(w, http.StatusBadRequest, err.Error())
+		common.WriteHeaderErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	common.WriteJSON(w, http.StatusOK, o)
-}
-
-func validateItems(items []*pb.ItemsWithQuantity) error {
-	if len(items) == 0 {
-		return common.ErrNoItems
-	}
-
-	for _, i := range items {
-		if i.ID == "" {
-			return common.ErrItemIdRequired
-		}
-
-		if i.Quantity <= 0 {
-			return common.ErrItemQuantityRequired
-		}
-	}
-
-	return nil
+	common.WriteJSON(w, http.StatusOK, order)
 }
