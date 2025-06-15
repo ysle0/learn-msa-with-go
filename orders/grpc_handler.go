@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
-
 	"github.com/rabbitmq/amqp091-go"
 	pb "github.com/ysle0/omsv2/common/api"
 	message_broker "github.com/ysle0/omsv2/common/message-broker"
@@ -27,9 +25,11 @@ func NewGrpcHandler(grpcServer *grpc.Server, service OrdersService, channel *amq
 }
 
 func (h *grpcHandler) CreateOrder(ctx context.Context, r *pb.CreateOrderRequest) (*pb.Order, error) {
-	log.Printf("New order received: %v\n", r)
-	order := &pb.Order{
-		ID: r.CustomerID,
+	//log.Printf("New order received: %v\n", r)
+
+	order, err := h.service.CreateOrder(ctx, r)
+	if err != nil {
+		return nil, err
 	}
 
 	marshalledOrder, err := json.Marshal(order)

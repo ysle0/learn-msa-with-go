@@ -16,27 +16,51 @@ func NewService(store OrdersStore) *service {
 	return &service{store}
 }
 
-func (s *service) CreateOrder(ctx context.Context) error {
-	return nil
+func (s *service) CreateOrder(ctx context.Context, r *pb.CreateOrderRequest) (*pb.Order, error) {
+	items, err := s.ValidateOrder(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("order validated: %v\n", items)
+	o := &pb.Order{
+		ID:         "42",
+		CustomerID: r.CustomerID,
+		Status:     "pending",
+		Items:      items,
+	}
+
+	return o, nil
 }
 
-func (s *service) ValidateOrder(ctx context.Context, r *pb.CreateOrderRequest) error {
+func (s *service) ValidateOrder(ctx context.Context, r *pb.CreateOrderRequest) ([]*pb.Item, error) {
 	if len(r.Items) == 0 {
-		return common.ErrNoItems
+		log.Printf("no items in request")
+		return nil, common.ErrNoItems
 	}
+
+	log.Printf("starting merge with items: %v\n", r.Items)
 	mergedItems := mergeItemsQuantities(r.Items)
-	log.Print(mergedItems)
+	log.Printf("merged items: %v\n", mergedItems)
 
 	// validate with the stock service
+	var itemsWithPrice []*pb.Item
+	for _, item := range mergedItems {
+		itemsWithPrice = append(itemsWithPrice, &pb.Item{
+			ID:       item.ID,
+			PriceID:  "price_1RaIJzFM42raIhkYqptQbQNR",
+			Quantity: item.Quantity,
+		})
+	}
 
-	return nil
+	return itemsWithPrice, nil
 }
 
 func mergeItemsQuantities(items []*pb.ItemsWithQuantity) []*pb.ItemsWithQuantity {
-	merged := make([]*pb.ItemsWithQuantity, 0)
-
+	var merged []*pb.ItemsWithQuantity
 	for _, item := range items {
 		found := false
+
 		for _, finalItem := range merged {
 			if finalItem.ID == item.ID {
 				finalItem.Quantity += item.Quantity

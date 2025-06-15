@@ -1,0 +1,17 @@
+POST http://localhost:8003/api/v1/customers/1/orders
+Content-Type: application/json
+
+[
+  {
+    "ID": "12",
+    "Quantity": 23
+  },
+  {
+    "ID": "9390r23qf",
+    "Quantity": 230
+  },
+  {
+    "ID": "asda3",
+    "Quantity": 2
+  }
+]

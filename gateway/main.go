@@ -40,8 +40,8 @@ func main() {
 	}()
 	defer registry.Unregister(ctx, instanceID, serviceName)
 
-	gateway := gateway.NewGRPCGateway(registry)
-	httpHandler := NewHttpHandler(gateway)
+	g := gateway.NewGRPCGateway(registry)
+	httpHandler := NewHttpHandler(g)
 
 	mux := http.NewServeMux()
 	httpHandler.registerRoutes(mux)

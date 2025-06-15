@@ -32,7 +32,7 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 		common.WriteHeaderErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	log.Printf("items: %+v\n", items)
+	log.Printf("items: %v\n", items)
 
 	err := validateItems(items)
 	if err != nil {
@@ -47,6 +47,7 @@ func (h *httpHandler) createOrder(w http.ResponseWriter, r *http.Request) {
 
 	rStatus := status.Convert(err)
 	if rStatus != nil {
+		log.Println(rStatus.Message())
 		if rStatus.Code() == codes.InvalidArgument {
 			common.WriteHeaderErr(w, http.StatusBadRequest, rStatus.Message())
 			return
